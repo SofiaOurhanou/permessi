@@ -1,0 +1,344 @@
+openapi: 3.0.3
+info:
+  title: API permessi lavorativi
+  version: "1.0"
+  description: |
+    REST API per richieste e approvazioni permessi. Tutte le rotte tranne register/login richiedono header `Authorization: Bearer <token>`.
+
+servers:
+  - url: /
+    description: Server locale Next.js
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: {}
+    UserPublic:
+      type: object
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        cognome: { type: string }
+        email: { type: string }
+        ruolo: { type: string, enum: [DIPENDENTE, RESPONSABILE] }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/UserPublic"
+    RegisterRequest:
+      type: object
+      required: [nome, cognome, email, password]
+      properties:
+        nome: { type: string }
+        cognome: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    Categoria:
+      type: object
+      properties:
+        id: { type: string }
+        descrizione: { type: string }
+    Richiesta:
+      type: object
+      properties:
+        id: { type: string }
+        dataRichiesta: { type: string, format: date-time }
+        dataInizio: { type: string, format: date-time }
+        dataFine: { type: string, format: date-time }
+        motivazione: { type: string }
+        stato: { type: string, enum: [IN_ATTESA, APPROVATO, RIFIUTATO] }
+        categoriaId: { type: string }
+        categoria:
+          $ref: "#/components/schemas/Categoria"
+        richiedenteId: { type: string }
+        richiedente:
+          type: object
+          properties:
+            id: { type: string }
+            nome: { type: string }
+            cognome: { type: string }
+            email: { type: string }
+        dataValutazione: { type: string, nullable: true }
+        valutatoreId: { type: string, nullable: true }
+        valutatore:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            nome: { type: string }
+            cognome: { type: string }
+    RichiestaCreate:
+      type: object
+      required: [dataInizio, dataFine, categoriaId, motivazione]
+      properties:
+        dataInizio: { type: string, description: "YYYY-MM-DD o ISO 8601" }
+        dataFine: { type: string }
+        categoriaId: { type: string }
+        motivazione: { type: string }
+    StatRow:
+      type: object
+      properties:
+        dipendenteId: { type: string }
+        nome: { type: string }
+        cognome: { type: string }
+        email: { type: string }
+        giorniRichiesti: { type: integer }
+        giorniApprovati: { type: integer }
+    StatisticheResponse:
+      type: object
+      properties:
+        mese: { type: string, example: "2026-05" }
+        definizione: { type: string }
+        righe:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatRow"
+
+paths:
+  /api/utenti/register:
+    post:
+      summary: Registrazione (ruolo DIPENDENTE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Utente creato e token emesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validazione fallita
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Email già in uso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/utenti/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Token JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Credenziali errate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/categorie:
+    get:
+      summary: Elenco categorie
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista categorie
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Categoria"
+        "401":
+          description: Non autenticato
+
+  /api/richieste:
+    get:
+      summary: Lista richieste (dipendente solo proprie; responsabile tutte)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Richiesta"
+    post:
+      summary: Nuova richiesta (solo DIPENDENTE)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RichiestaCreate"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Richiesta"
+        "400":
+          description: Validazione o date non valide
+        "403":
+          description: Solo dipendenti
+
+  /api/richieste/da-approvare:
+    get:
+      summary: Richieste in attesa (solo RESPONSABILE)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Richiesta"
+
+  /api/richieste/statistiche-mensili:
+    get:
+      summary: Statistiche giorni nel mese (solo RESPONSABILE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: mese
+          schema: { type: string, example: "2026-05" }
+          description: "YYYY-MM (default mese corrente UTC)"
+        - in: query
+          name: dipendenteId
+          schema: { type: string }
+          description: Filtro opzionale dipendente
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatisticheResponse"
+
+  /api/richieste/{id}:
+    get:
+      summary: Dettaglio richiesta
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Richiesta"
+        "404":
+          description: Non trovata
+    put:
+      summary: Modifica (solo richiedente, stato IN_ATTESA)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RichiestaCreate"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Richiesta"
+    delete:
+      summary: |
+        Elimina richiesta. Dipendente solo proprie IN_ATTESA.
+        Responsabile solo richieste APPROVATO (regole di sicurezza consegna).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Eliminata
+        "400":
+          description: Stato non consentito per eliminazione
+
+  /api/richieste/{id}/approva:
+    put:
+      summary: Approva (solo RESPONSABILE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Richiesta"
+
+  /api/richieste/{id}/rifiuta:
+    put:
+      summary: Rifiuta (solo RESPONSABILE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Richiesta"

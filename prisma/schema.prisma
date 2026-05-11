@@ -1,0 +1,63 @@
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Ruolo {
+  DIPENDENTE
+  RESPONSABILE
+}
+
+enum StatoRichiesta {
+  IN_ATTESA
+  APPROVATO
+  RIFIUTATO
+}
+
+model User {
+  id           String @id @default(cuid())
+  nome         String
+  cognome      String
+  email        String @unique
+  passwordHash String
+  ruolo        Ruolo  @default(DIPENDENTE)
+
+  richiesteInoltrate RichiestaPermesso[] @relation("Richiedente")
+  valutazioni        RichiestaPermesso[] @relation("Valutatore")
+}
+
+model CategoriaPermesso {
+  id          String @id @default(cuid())
+  descrizione String @unique
+
+  richieste RichiestaPermesso[]
+}
+
+model RichiestaPermesso {
+  id            String          @id @default(cuid())
+  dataRichiesta DateTime        @default(now())
+  dataInizio    DateTime
+  dataFine      DateTime
+  motivazione   String
+  stato         StatoRichiesta  @default(IN_ATTESA)
+
+  categoriaId String
+  categoria   CategoriaPermesso @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+
+  richiedenteId String
+  richiedente   User @relation("Richiedente", fields: [richiedenteId], references: [id], onDelete: Cascade)
+
+  dataValutazione DateTime?
+  valutatoreId    String?
+  valutatore      User?   @relation("Valutatore", fields: [valutatoreId], references: [id], onDelete: SetNull)
+
+  @@index([richiedenteId])
+  @@index([stato])
+  @@index([dataInizio, dataFine])
+}

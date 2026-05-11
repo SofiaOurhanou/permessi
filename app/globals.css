@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brut-ink: #0a0a0a;
+  --brut-bg: #ff9edb;
+  --brut-bg-2: #ff6bcb;
+  --brut-paper: #fff7fc;
+  --brut-hot: #ff1493;
+  --brut-deep: #c4006e;
+  --brut-acid: #e8ff5a;
+  --brut-ok: #00ffa3;
+  --brut-bad: #ff2d2d;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-brut-ink: var(--brut-ink);
+  --color-brut-bg: var(--brut-bg);
+  --color-brut-bg-2: var(--brut-bg-2);
+  --color-brut-paper: var(--brut-paper);
+  --color-brut-hot: var(--brut-hot);
+  --color-brut-deep: var(--brut-deep);
+  --color-brut-acid: var(--brut-acid);
+  --color-brut-ok: var(--brut-ok);
+  --color-brut-bad: var(--brut-bad);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --shadow-brut: 6px 6px 0 0 var(--brut-ink);
+  --shadow-brut-sm: 4px 4px 0 0 var(--brut-ink);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--brut-bg);
+  background-image: linear-gradient(
+      135deg,
+      rgba(10, 10, 10, 0.06) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(10, 10, 10, 0.06) 50%,
+      rgba(10, 10, 10, 0.06) 75%,
+      transparent 75%,
+      transparent
+    ),
+    radial-gradient(circle at 20% 20%, #ffb8ec 0%, transparent 45%),
+    radial-gradient(circle at 80% 60%, #ff5ec7 0%, transparent 40%);
+  background-size: 24px 24px, auto, auto;
+  color: var(--brut-ink);
+}
+
+/* Swagger UI: coerenza col tema */
+.swagger-brut .swagger-ui .topbar {
+  display: none;
+}
+.swagger-brut .swagger-ui .info .title {
+  color: var(--brut-deep) !important;
+  font-weight: 900 !important;
+}
+.swagger-brut .swagger-ui .scheme-container {
+  background: var(--brut-paper) !important;
+  border: 4px solid var(--brut-ink) !important;
+  box-shadow: var(--shadow-brut-sm) !important;
+}
+.swagger-brut .swagger-ui .btn.authorize {
+  border: 3px solid var(--brut-ink) !important;
+  background: var(--brut-acid) !important;
+  color: var(--brut-ink) !important;
+  font-weight: 800 !important;
 }
